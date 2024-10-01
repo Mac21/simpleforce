@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -49,18 +51,18 @@ type QueryResult struct {
 
 // Expose sid to save in admin settings
 func (client *Client) GetSid() (sid string) {
-        return client.sessionID
+	return client.sessionID
 }
 
-//Expose Loc to save in admin settings
+// Expose Loc to save in admin settings
 func (client *Client) GetLoc() (loc string) {
 	return client.instanceURL
 }
 
 // Set SID and Loc as a means to log in without LoginPassword
 func (client *Client) SetSidLoc(sid string, loc string) {
-        client.sessionID = sid
-        client.instanceURL = loc
+	client.sessionID = sid
+	client.instanceURL = loc
 }
 
 // Query runs an SOQL query. q could either be the SOQL string or the nextRecordsURL.
@@ -191,7 +193,6 @@ func (client *Client) LoginPassword(username, password, token string) error {
 	}
 
 	respData, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		log.Println(logPrefix, "error occurred reading response data,", err)
 	}
@@ -270,7 +271,7 @@ func NewClient(url, clientID, apiVersion string) *Client {
 	}
 
 	// Remove trailing "/" from base url to prevent "//" when paths are appended
-    client.baseURL = strings.TrimSuffix(client.baseURL, "/")
+	client.baseURL = strings.TrimSuffix(client.baseURL, "/")
 	return client
 }
 
@@ -329,10 +330,10 @@ func parseHost(input string) string {
 	return "Failed to parse URL input"
 }
 
-//Get the List of all available objects and their metadata for your organization's data
+// Get the List of all available objects and their metadata for your organization's data
 func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 	apiPath := fmt.Sprintf("/services/data/v%s/sobjects", client.apiVersion)
-	baseURL := strings.TrimRight(client.baseURL, "/")
+	baseURL := strings.TrimRight(client.instanceURL, "/")
 	url := fmt.Sprintf("%s%s", baseURL, apiPath) // Get the objects
 	httpClient := client.httpClient
 	req, err := http.NewRequest("GET", url, nil)
@@ -359,4 +360,47 @@ func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 		return nil, err
 	}
 	return &meta, nil
+}
+
+type FlowInput struct {
+    Inputs []FlowData `json:"inputs"`
+}
+
+type FlowData map[string]any
+
+func (client *Client) RunCustomFlow(flowName string, input *FlowInput) (FlowData, error) {
+	if flowName == "" {
+		return nil, errors.New("Flow name required")
+	}
+
+    var b *bytes.Buffer
+    if err := json.NewDecoder(b).Decode(input); err != nil {
+        return nil, err
+    }
+
+	url := client.makeURL("/actions/custom/flow" + flowName)
+	req, err := http.NewRequest(http.MethodPost, url, b)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(logPrefix, "error while reading all body")
+		return nil, err
+	}
+
+	var resD FlowData
+	err = json.Unmarshal(respData, &resD)
+	if err != nil {
+		return nil, err
+	}
+
+	return resD, nil
 }
