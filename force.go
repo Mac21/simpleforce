@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -191,7 +190,7 @@ func (client *Client) LoginPassword(username, password, token string) error {
 		return theError
 	}
 
-	respData, err := ioutil.ReadAll(resp.Body)
+	respData, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		log.Println(logPrefix, "error occurred reading response data,", err)
@@ -251,12 +250,12 @@ func (client *Client) httpRequest(method, url string, body io.Reader) ([]byte, e
 		return nil, theError
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // makeURL generates a REST API URL based on baseURL, APIVersion of the client.
 func (client *Client) makeURL(req string) string {
-	client.apiVersion = strings.Replace(client.apiVersion, "v", "", -1)
+	client.apiVersion = strings.ReplaceAll(client.apiVersion, "v", "")
 	retURL := fmt.Sprintf("%s/services/data/v%s/%s", client.instanceURL, client.apiVersion, req)
 	return retURL
 }
@@ -271,9 +270,7 @@ func NewClient(url, clientID, apiVersion string) *Client {
 	}
 
 	// Remove trailing "/" from base url to prevent "//" when paths are appended
-	if strings.HasSuffix(client.baseURL, "/") {
-		client.baseURL = client.baseURL[:len(client.baseURL)-1]
-	}
+    client.baseURL = strings.TrimSuffix(client.baseURL, "/")
 	return client
 }
 
@@ -342,7 +339,7 @@ func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+client.sessionID)
-	// resp, err := http.Get(url)
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -351,7 +348,7 @@ func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 
 	var meta SObjectMeta
 
-	respData, err := ioutil.ReadAll(resp.Body)
+	respData, err := io.ReadAll(resp.Body)
 	log.Println(logPrefix, fmt.Sprintf("status code %d", resp.StatusCode))
 	if err != nil {
 		log.Println(logPrefix, "error while reading all body")
