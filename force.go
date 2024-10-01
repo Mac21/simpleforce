@@ -78,7 +78,7 @@ func (client *Client) Query(q string) (*QueryResult, error) {
 		formatString := "%s/services/data/v%s/query?q=%s"
 		baseURL := client.instanceURL
 		if client.useToolingAPI {
-			formatString = strings.Replace(formatString, "query", "tooling/query", -1)
+			formatString = strings.ReplaceAll(formatString, "query", "tooling/query")
 		}
 		u = fmt.Sprintf(formatString, baseURL, client.apiVersion, url.QueryEscape(q))
 	}
