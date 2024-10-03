@@ -373,14 +373,14 @@ func (client *Client) RunCustomFlow(flowName string, input *FlowInput) (FlowData
 		return nil, errors.New("Flow name required")
 	}
 
-	var b *bytes.Buffer
-	if err := json.NewEncoder(b).Encode(input); err != nil {
+	var b bytes.Buffer
+	if err := json.NewEncoder(&b).Encode(input); err != nil {
 		return nil, err
 	}
 
 	url := client.makeURL("/actions/custom/flow" + flowName)
 
-	respData, err := client.httpRequest(http.MethodPost, url, b)
+	respData, err := client.httpRequest(http.MethodPost, url, &b)
 	if err != nil {
 		return nil, err
 	}

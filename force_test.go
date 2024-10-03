@@ -83,7 +83,6 @@ func TestClient_LoginPasswordNoToken(t *testing.T) {
 }
 
 func TestClient_LoginOAuth(t *testing.T) {
-
 }
 
 func TestClient_Query(t *testing.T) {
@@ -172,6 +171,35 @@ func TestClient_QueryLike(t *testing.T) {
 		case0 := &result.Records[0]
 		if !strings.Contains(case0.StringField("Subject"), "simpleforce") {
 			t.FailNow()
+		}
+	}
+}
+
+func TestClient_RunCustomFlow(t *testing.T) {
+	client := NewClient(DefaultURL, DefaultClientID, DefaultAPIVersion)
+
+	fd := FlowData{
+		"TestKey": 123,
+		"Another": "asdf",
+	}
+	fn := "test"
+	inp := &FlowInput{
+		Inputs: []FlowData{
+			fd,
+		},
+	}
+
+	if _, err := client.RunCustomFlow(fn, inp); err != nil {
+        // RunCustomFlow returns an error when doing httpClient.Do for the request, but we aren't testing that part of the code
+		if !strings.Contains(err.Error(), "unsupported protocol") {
+			t.Fatalf("expected RunCustomFlow marshalling input to not fail got %s", err)
+		}
+	}
+
+	if _, err := client.RunCustomFlow(fn, nil); err != nil {
+        // RunCustomFlow returns an error when doing httpClient.Do for the request, but we aren't testing that part of the code
+		if !strings.Contains(err.Error(), "unsupported protocol") {
+			t.Fatalf("expected RunCustomFlow marshalling input to not fail got %s", err)
 		}
 	}
 }
