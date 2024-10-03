@@ -363,7 +363,7 @@ func (client *Client) DescribeGlobal() (*SObjectMeta, error) {
 }
 
 type FlowInput struct {
-    Inputs []FlowData `json:"inputs"`
+	Inputs []FlowData `json:"inputs"`
 }
 
 type FlowData map[string]any
@@ -373,26 +373,15 @@ func (client *Client) RunCustomFlow(flowName string, input *FlowInput) (FlowData
 		return nil, errors.New("Flow name required")
 	}
 
-    var b *bytes.Buffer
-    if err := json.NewDecoder(b).Decode(input); err != nil {
-        return nil, err
-    }
+	var b *bytes.Buffer
+	if err := json.NewEncoder(b).Encode(input); err != nil {
+		return nil, err
+	}
 
 	url := client.makeURL("/actions/custom/flow" + flowName)
-	req, err := http.NewRequest(http.MethodPost, url, b)
-	if err != nil {
-		return nil, err
-	}
 
-	resp, err := client.httpClient.Do(req)
+	respData, err := client.httpRequest(http.MethodPost, url, b)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(logPrefix, "error while reading all body")
 		return nil, err
 	}
 
