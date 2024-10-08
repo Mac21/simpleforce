@@ -26,8 +26,9 @@ const (
 
 // Client is the main instance to access salesforce.
 type Client struct {
-	sessionID string
-	user      struct {
+	sessionID           string
+	sessionSecondsValid int
+	user                struct {
 		id       string
 		name     string
 		fullName string
@@ -50,13 +51,18 @@ type QueryResult struct {
 }
 
 // Expose sid to save in admin settings
-func (client *Client) GetSid() (sid string) {
+func (client *Client) GetSid() string {
 	return client.sessionID
 }
 
 // Expose Loc to save in admin settings
-func (client *Client) GetLoc() (loc string) {
+func (client *Client) GetLoc() string {
 	return client.instanceURL
+}
+
+// GetSessionSecondsValid returns the time in seconds that the session is valid for.
+func (client *Client) GetSessionSecondsValid() int {
+	return client.sessionSecondsValid
 }
 
 // Set SID and Loc as a means to log in without LoginPassword
@@ -198,13 +204,14 @@ func (client *Client) LoginPassword(username, password, token string) error {
 	}
 
 	var loginResponse struct {
-		XMLName      xml.Name `xml:"Envelope"`
-		ServerURL    string   `xml:"Body>loginResponse>result>serverUrl"`
-		SessionID    string   `xml:"Body>loginResponse>result>sessionId"`
-		UserID       string   `xml:"Body>loginResponse>result>userId"`
-		UserEmail    string   `xml:"Body>loginResponse>result>userInfo>userEmail"`
-		UserFullName string   `xml:"Body>loginResponse>result>userInfo>userFullName"`
-		UserName     string   `xml:"Body>loginResponse>result>userInfo>userName"`
+		XMLName             xml.Name `xml:"Envelope"`
+		ServerURL           string   `xml:"Body>loginResponse>result>serverUrl"`
+		SessionID           string   `xml:"Body>loginResponse>result>sessionId"`
+		SessionSecondsValid int      `xml:"Body>loginResponse>result>userInfo>sessionSecondsValid"`
+		UserID              string   `xml:"Body>loginResponse>result>userId"`
+		UserEmail           string   `xml:"Body>loginResponse>result>userInfo>userEmail"`
+		UserFullName        string   `xml:"Body>loginResponse>result>userInfo>userFullName"`
+		UserName            string   `xml:"Body>loginResponse>result>userInfo>userName"`
 	}
 
 	err = xml.Unmarshal(respData, &loginResponse)
@@ -215,6 +222,7 @@ func (client *Client) LoginPassword(username, password, token string) error {
 
 	// Now we should all be good and the sessionID can be used to talk to salesforce further.
 	client.sessionID = loginResponse.SessionID
+	client.sessionSecondsValid = loginResponse.SessionSecondsValid
 	client.instanceURL = parseHost(loginResponse.ServerURL)
 	client.user.id = loginResponse.UserID
 	client.user.name = loginResponse.UserName
