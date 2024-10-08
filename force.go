@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	DefaultAPIVersion = "62.0"
+	DefaultAPIVersion = "61.0"
 	DefaultClientID   = "simpleforce"
 	DefaultURL        = "https://login.salesforce.com"
 
@@ -231,6 +231,66 @@ func (client *Client) LoginPassword(username, password, token string) error {
 
 	log.Println(logPrefix, "User", client.user.name, "authenticated.")
 	return nil
+}
+
+// Logout ends the current session 
+func (client *Client) Logout() error {
+	soapBody := `<?xml version="1.0" encoding="utf-8" ?>
+        <env:Envelope
+                xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                xmlns:urn="urn:partner.soap.sforce.com">
+            <env:Header>
+                <urn:SessionHeader>
+                    <urn:sessionId>%s</urn:sessionId>
+                </urn:SessionHeader>
+            </env:Header>
+            <env:Body>
+                <n1:logout xmlns:n1="urn:partner.soap.sforce.com">
+                </n1:logout>
+            </env:Body>
+        </env:Envelope>`
+	soapBody = fmt.Sprintf(soapBody, client.sessionID)
+
+	url := fmt.Sprintf("%s/services/Soap/u/%s", client.instanceURL, client.apiVersion)
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(soapBody))
+	if err != nil {
+		log.Println(logPrefix, "error occurred creating request,", err)
+		return err
+	}
+
+	req.Header.Add("Content-Type", "text/xml")
+	req.Header.Add("charset", "UTF-8")
+	req.Header.Add("SOAPAction", "logout")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.sessionID))
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		log.Println(logPrefix, "error occurred submitting request,", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Println(logPrefix, "request failed,", resp.StatusCode)
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resp.Body)
+		newStr := buf.String()
+		log.Println(logPrefix, "Failed resp.body: ", newStr)
+		theError := ParseSalesforceError(resp.StatusCode, buf.Bytes())
+		return theError
+	}
+
+	client.sessionID = ""
+	client.sessionSecondsValid = 0
+	client.instanceURL = ""
+	client.user.id = ""
+	client.user.name = ""
+	client.user.email = ""
+	client.user.fullName = ""
+
+    return nil
 }
 
 // httpRequest executes an HTTP request to the salesforce server and returns the response data in byte buffer.

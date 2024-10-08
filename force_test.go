@@ -65,6 +65,31 @@ func TestClient_LoginPassword(t *testing.T) {
 	}
 }
 
+func TestClient_Logout(t *testing.T) {
+	checkCredentialsAndSkip(t)
+
+	client := NewClient(sfURL, DefaultClientID, DefaultAPIVersion)
+	if client == nil {
+		t.Fatal()
+	}
+
+	// Use token
+	err := client.LoginPassword(sfUser, sfPass, sfToken)
+	if err != nil {
+		t.Fail()
+	} else {
+		log.Println(logPrefix, "sessionID:", client.sessionID)
+	}
+
+    if err := client.Logout(); err != nil {
+        t.Fail()
+    }
+
+    if client.sessionID != "" {
+        t.Fatalf("expected sessionID to be empty after logout got %s\n", client.sessionID)
+    }
+}
+
 func TestClient_LoginPasswordNoToken(t *testing.T) {
 	checkCredentialsAndSkip(t)
 
