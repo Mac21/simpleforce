@@ -233,7 +233,7 @@ func (client *Client) LoginPassword(username, password, token string) error {
 	return nil
 }
 
-// Logout ends the current session 
+// Logout ends the current session
 func (client *Client) Logout() error {
 	soapBody := `<?xml version="1.0" encoding="utf-8" ?>
         <env:Envelope
@@ -290,7 +290,7 @@ func (client *Client) Logout() error {
 	client.user.email = ""
 	client.user.fullName = ""
 
-    return nil
+	return nil
 }
 
 // httpRequest executes an HTTP request to the salesforce server and returns the response data in byte buffer.
@@ -436,7 +436,7 @@ type FlowInput struct {
 
 type FlowData map[string]any
 
-func (client *Client) RunCustomFlow(flowName string, input *FlowInput) (FlowData, error) {
+func (client *Client) RunCustomFlow(flowName string, input *FlowInput) ([]byte, error) {
 	if flowName == "" {
 		return nil, errors.New("Flow name required")
 	}
@@ -448,16 +448,10 @@ func (client *Client) RunCustomFlow(flowName string, input *FlowInput) (FlowData
 
 	url := client.makeURL("/actions/custom/flow/" + flowName)
 
-	respData, err := client.httpRequest(http.MethodPost, url, &b)
+	r, err := client.httpRequest(http.MethodPost, url, &b)
 	if err != nil {
 		return nil, err
 	}
 
-	var resD FlowData
-	err = json.Unmarshal(respData, &resD)
-	if err != nil {
-		return nil, err
-	}
-
-	return resD, nil
+	return r, nil
 }
